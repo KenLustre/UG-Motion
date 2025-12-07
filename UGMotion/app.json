@@ -1,0 +1,43 @@
+{
+  "expo": {
+    "name": "UGMotion",
+    "slug": "UGMotion",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/UGLogo.png",
+    "scheme": "ugmotion",
+    "userInterfaceStyle": "automatic",
+    "backgroundColor": "#000000",
+    "ios": {
+      "supportsTablet": true,
+      "backgroundColor": "#000000"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/UGLogo.png",
+        "backgroundColor": "#000000"
+      },
+      "backgroundColor": "#000000"
+    },
+    "web": {
+      "output": "static",
+      "bundler": "metro"
+    },
+    "plugins": [
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#232323",
+          "image": "./assets/images/UGLogo.png",
+          "dark": {
+            "image": "./assets/images/UGLogo.png",
+            "backgroundColor": "#000000"
+          },
+          "imageWidth": 200
+        }
+      ],
+      "expo-router",
+      "expo-font"
+    ]
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "compilerOptions": {
+    // This is required for the path alias to work
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["*"]
+    }
+  },
+  "extends": "expo/tsconfig.base"
+}
