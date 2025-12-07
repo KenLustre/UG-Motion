@@ -41,13 +41,12 @@ export default function LoginScreen() {
         return;
       }
       if (user.password === password) {
-        // Password is correct, now check if the user is an admin
-        if (user.name.toLowerCase() === 'admin') {
-          router.replace("/AdminDashboard"); // Redirect admin
-        } else {
-          await AsyncStorage.setItem('loggedInUserId', user.id.toString());
-          router.replace("/(tabs)/Dashboard"); // Redirect regular user
-        }
+        // In a real app, this should check a role, not a hardcoded name
+        const isAdmin = user.name.toLowerCase() === 'admin';
+        const redirectPath = isAdmin ? "/AdminDashboard" : "/(tabs)/Dashboard";
+        
+        await AsyncStorage.setItem('loggedInUserId', user.id.toString());
+        router.replace(redirectPath);
       } else {
         Alert.alert("Login Failed", "Incorrect password.");
       }

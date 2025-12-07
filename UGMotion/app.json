@@ -18,7 +18,8 @@
         "backgroundColor": "#000000"
       },
       "backgroundColor": "#000000",
-      "package": "com.kenlustre.UGMotion"
+      "package": "com.kenlustre.UGMotion",
+      "versionCode": 1
     },
     "web": {
       "output": "static",
