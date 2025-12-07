@@ -55,7 +55,7 @@ The application features a dark-themed, user-friendly interface that makes it ea
   - **Read:** Reads user accounts ID and Name through Admin Dashboard.
   - **Update:** Updates user's account with a new password.
   - **Delete:** Securely delete user accounts with a confirmation prompt.
-  - **Undo:** Restore the most recently deleted user. This action is temporary and resets on logout.
+- **Undo:** Restore the most recently deleted user. This action is temporary and resets on logout.
 
 ---
 
