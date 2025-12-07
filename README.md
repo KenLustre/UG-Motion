@@ -46,12 +46,14 @@ The application features a dark-themed, user-friendly interface that makes it ea
 - **User Profile Management:** Edit personal details like name, age, height, weight, and profile picture.
 - **Secure Authentication:** A robust login system to keep user data private.
 
-### For Admins
+### For Admins (DATABASE)
 
 - **Admin Dashboard:** A separate, secure interface for managing all users in the database.
 - **User Management:** View a table of all registered users with their User ID.
 - **CRUD Operations:**
-  - **Add:** Create new user accounts with a username and password.
+  - **Create:** Create new user accounts with a username and password.
+  - **Read:** Reads user accounts ID and Name through Admin Dashboard.
+  - **Update:** Updates user's account with a new password.
   - **Delete:** Securely delete user accounts with a confirmation prompt.
   - **Undo:** Restore the most recently deleted user. This action is temporary and resets on logout.
 
