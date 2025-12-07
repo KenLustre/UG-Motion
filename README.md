@@ -1,7 +1,7 @@
 # UGMotion - Fitness & Wellness Tracker
 
 <p align="center">
-  <img src="assets/images/LoginLogo.png" alt="UGMotion Logo" width="200"/>
+  <img src="_PROJECT-UGMOTION/UGMotion/assets/images/LoginLogo.png" alt="UGMotion Logo" width="200"/>
 </p>
 
 <p align="center">
