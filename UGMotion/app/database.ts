@@ -124,7 +124,20 @@ export const initDatabase = () => {
 
 export const fetchUserProfile = (): User => {
     const user = db.getFirstSync<User>('SELECT * FROM users LIMIT 1;');
-    return user!;
+    if (!user) {
+        return {
+            id: 0,
+            name: 'Guest',
+            email: null,
+            age: 'N/A',
+            sex: 'N/A',
+            height: 'N/A',
+            weight: 'N/A',
+            profileImageUri: null,
+            selectedEquipment: '[]'
+        };
+    }
+    return user;
 };
 
 export const saveUserProfile = (user: User): void => {
@@ -264,3 +277,44 @@ export const saveDailyGoals = (goals: { water_target?: number | null, calorie_ta
         );
     });
 };
+
+export const debugLogSchema = (): void => {
+    console.log('--- ADMIN DATABASE INSPECTION ---');
+    const tables = db.getAllSync<{ name: string }>("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';");
+    tables.forEach(table => {
+        console.log(`\n=== TABLE: ${table.name.toUpperCase()} ===`);
+        const columns = db.getAllSync(`PRAGMA table_info(${table.name});`);
+        console.log('  [Schema]:', columns.map((c: any) => `${c.name} (${c.type})`).join(', '));
+        
+        const foreignKeys = db.getAllSync(`PRAGMA foreign_key_list(${table.name});`);
+        foreignKeys.forEach((fk: any) => {
+            console.log(`  [Relation]: ${fk.from} -> ${fk.table}(${fk.to}) [ON DELETE ${fk.on_delete}]`);
+        });
+
+        const rows = db.getAllSync<any>(`SELECT * FROM ${table.name};`);
+        if (rows.length > 0) {
+            console.log(`  [Data] (${rows.length} records):`);
+            rows.forEach((row) => {
+                const formattedRow = Object.entries(row)
+                    .map(([key, value]) => `${key}: ${value === null ? 'NULL' : value}`)
+                    .join(' | ');
+                console.log(`    -> ${formattedRow}`);
+            });
+        } else {
+            console.log('  [Data]: (Empty)');
+        }
+    });
+    console.log('\n---------------------------------');
+};
+
+export const clearAllData = (): void => {
+    db.withTransactionSync(() => {
+        db.execSync('DELETE FROM workout_logs;');
+        db.execSync('DELETE FROM routine_activities;');
+        db.execSync('DELETE FROM plan_days;');
+        db.execSync('DELETE FROM water_logs;');
+        db.execSync('DELETE FROM food_logs;');
+        db.execSync('DELETE FROM daily_goals;');
+    });
+    console.log('--- ALL DATA CLEARED ---');
+}; 

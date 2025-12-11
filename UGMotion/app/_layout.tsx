@@ -3,7 +3,7 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useState } from 'react';
 import 'react-native-reanimated';
-import { initDatabase } from './database'; 
+import { initDatabase, debugLogSchema } from './database'; 
 SplashScreen.preventAutoHideAsync();
 export default function RootLayout() {
   const [loaded, error] = useFonts({
@@ -19,6 +19,7 @@ export default function RootLayout() {
   useEffect(() => {
     try {
       initDatabase();
+      debugLogSchema();
       setDbInitialized(true);
     } catch (err) {
       console.error("Database initialization error:", err);
