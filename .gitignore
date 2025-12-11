@@ -1,5 +1,6 @@
 # Expo
 .expo/
+dist/
 
 # Node
 node_modules/
@@ -23,6 +24,53 @@ web-build/
 # Metro bundler
 .metro-cache/
 
-# Other
+# Native
+*.orig.*
 *.jks
 *.private
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Metro
+.metro-health-check*
+
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS
+.DS_Store
+*.pem
+
+# typescript
+*.tsbuildinfo
+
+# generated native folders
+/ios
+/android
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Metro
+.metro-health-check*
+
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS
+.DS_Store
+*.pem
+
+# typescript
+*.tsbuildinfo
+
+# generated native folders
+/ios
+/android
