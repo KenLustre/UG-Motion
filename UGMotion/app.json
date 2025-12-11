@@ -4,12 +4,11 @@
     "slug": "UGMotion",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/UGLogo.png",
+    "icon": "./assets/images/UGLogo.jpg",
     "scheme": "ugmotion",
     "userInterfaceStyle": "automatic",
     "backgroundColor": "#000000",
     "ios": {
-      "supportsTablet": true,
       "backgroundColor": "#000000"
     },
     "android": {
@@ -18,8 +17,7 @@
         "backgroundColor": "#000000"
       },
       "backgroundColor": "#000000",
-      "package": "com.kenlustre.UGMotion",
-      "versionCode": 1
+      "package": "com.kenlustre.UGMotion"
     },
     "web": {
       "output": "static",

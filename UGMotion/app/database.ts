@@ -26,6 +26,7 @@ export interface RoutineActivity {
 }
 export interface WorkoutLog {
     id: number;
+    user_id: number;
     routine_activity_id: number;
     date: string; 
     weight: number;
@@ -54,8 +55,10 @@ export const initDatabase = () => {
         db.execSync(
             `CREATE TABLE IF NOT EXISTS plan_days (
                     id INTEGER PRIMARY KEY NOT NULL,
+                    user_id INTEGER NOT NULL,
                     day_name TEXT NOT NULL,
-                    focus TEXT
+                    focus TEXT,
+                    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
                 );`
         );
         db.execSync(
@@ -71,41 +74,59 @@ export const initDatabase = () => {
         db.execSync(
             `CREATE TABLE IF NOT EXISTS workout_logs (
                     id INTEGER PRIMARY KEY NOT NULL,
+                    user_id INTEGER NOT NULL,
                     routine_activity_id INTEGER,
                     date TEXT NOT NULL,
                     weight REAL,
                     reps INTEGER,
                     completed INTEGER DEFAULT 0,
+                    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
                     FOREIGN KEY (routine_activity_id) REFERENCES routine_activities (id) ON DELETE SET NULL
                 );`
         );
         db.execSync(
             `CREATE TABLE IF NOT EXISTS water_logs (
                     id INTEGER PRIMARY KEY NOT NULL,
+                    user_id INTEGER NOT NULL,
                     date TEXT NOT NULL,
-                    amount_ml INTEGER NOT NULL
+                    amount_ml INTEGER NOT NULL,
+                    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
                 );`
         );
         db.execSync(
             `CREATE TABLE IF NOT EXISTS food_logs (
                     id INTEGER PRIMARY KEY NOT NULL,
+                    user_id INTEGER NOT NULL,
                     date TEXT NOT NULL,
                     meal_type TEXT NOT NULL,
                     food_name TEXT NOT NULL,
                     calories INTEGER NOT NULL,
                     protein_g REAL,
                     carbs_g REAL,
-                    fat_g REAL
+                    fat_g REAL,
+                    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
                 );`
         );
         db.execSync(
             `CREATE TABLE IF NOT EXISTS daily_goals (
-                    date TEXT PRIMARY KEY NOT NULL,
+                    date TEXT NOT NULL,
+                    user_id INTEGER NOT NULL,
                     water_target INTEGER,
                     calorie_target INTEGER,
-                    protein_target INTEGER
+                    protein_target INTEGER,
+                    PRIMARY KEY (date, user_id),
+                    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
                 );`
         );
+        const tablesToMigrate = ['plan_days', 'workout_logs', 'water_logs', 'food_logs', 'daily_goals'];
+        tablesToMigrate.forEach(tableName => {
+            const columns = db.getAllSync<any>(`PRAGMA table_info(${tableName});`);
+            const hasUserId = columns.some(column => column.name === 'user_id');
+            if (!hasUserId) {
+                console.log(`Applying migration: Adding 'user_id' to '${tableName}' table.`);
+                db.execSync(`ALTER TABLE ${tableName} ADD COLUMN user_id INTEGER;`);
+            }
+        });
 
         const columns = db.getAllSync<any>('PRAGMA table_info(daily_goals);');
         const hasProteinTarget = columns.some(column => column.name === 'protein_target');
@@ -122,21 +143,8 @@ export const initDatabase = () => {
     });
 };
 
-export const fetchUserProfile = (): User => {
-    const user = db.getFirstSync<User>('SELECT * FROM users LIMIT 1;');
-    if (!user) {
-        return {
-            id: 0,
-            name: 'Guest',
-            email: null,
-            age: 'N/A',
-            sex: 'N/A',
-            height: 'N/A',
-            weight: 'N/A',
-            profileImageUri: null,
-            selectedEquipment: '[]'
-        };
-    }
+export const fetchUserProfile = (userId: number): User | null => {
+    const user = db.getFirstSync<User>('SELECT * FROM users WHERE id = ?;', [userId]);
     return user;
 };
 
@@ -178,24 +186,27 @@ export const addUser = (name: string, password: string): User | null => {
     return null;
 };
 
-export const saveWeeklyPlan = (plan: DayPlan[]): void => {
+export const saveWeeklyPlan = (plan: DayPlan[], userId: number): void => {
     db.withTransactionSync(() => {
-        db.execSync('DELETE FROM routine_activities;');
-        db.execSync('DELETE FROM plan_days;');
+        const userPlanDays = db.getAllSync<{ id: number }>('SELECT id FROM plan_days WHERE user_id = ?;', [userId]);
+        // Deleting from plan_days will automatically cascade to delete related routine_activities.
+        if (userPlanDays.length > 0) { 
+            db.runSync('DELETE FROM plan_days WHERE user_id = ?;', [userId]);
+        }
         plan.forEach(day => {
-            const result = db.runSync('INSERT INTO plan_days (day_name, focus) VALUES (?, ?);', [day.day, day.focus]);
+            const result = db.runSync('INSERT INTO plan_days (user_id, day_name, focus) VALUES (?, ?, ?);', [userId, day.day, day.focus]);
             const dayId = result.lastInsertRowId;
             if (dayId) {
                 day.activities.forEach(activity => {
-                    db.runSync('INSERT INTO routine_activities (plan_day_id, name, sets, reps) VALUES (?, ?, ?, ?);', [dayId, activity.name, activity.sets || 3, activity.reps || 12]);
+                    db.runSync('INSERT INTO routine_activities (plan_day_id, name, sets, reps) VALUES (?, ?, ?, ?);', [dayId, activity.name, activity.sets, activity.reps]);
                 });
             }
         });
     });
 };
 
-export const fetchWeeklyPlan = (): DayPlan[] => {
-    const days = db.getAllSync<any>('SELECT * FROM plan_days ORDER BY id;');
+export const fetchWeeklyPlan = (userId: number): DayPlan[] => {
+    const days = db.getAllSync<any>('SELECT * FROM plan_days WHERE user_id = ? ORDER BY id;', [userId]);
     if (days.length === 0) {
         return [];
     }
@@ -206,17 +217,17 @@ export const fetchWeeklyPlan = (): DayPlan[] => {
     return fullPlan;
 };
 
-export const fetchLogsForDay = (plan_day_id: number, date: string): WorkoutLog[] => {
+export const fetchLogsForDay = (plan_day_id: number, date: string, userId: number): WorkoutLog[] => {
     return db.getAllSync<WorkoutLog>(`SELECT l.* FROM workout_logs l
                 JOIN routine_activities ra ON l.routine_activity_id = ra.id
-                WHERE ra.plan_day_id = ? AND l.date = ?;`,
-        [plan_day_id, date]
+                WHERE ra.plan_day_id = ? AND l.date = ? AND l.user_id = ?;`,
+        [plan_day_id, date, userId]
     );
 };
 
-export const saveWorkoutLog = (log: Omit<WorkoutLog, 'id'>): number => {
-    const result = db.runSync('INSERT INTO workout_logs (routine_activity_id, date, weight, reps, completed) VALUES (?, ?, ?, ?, ?);',
-        [log.routine_activity_id, log.date, log.weight, log.reps, log.completed ? 1 : 0]);
+export const saveWorkoutLog = (log: Omit<WorkoutLog, 'id' | 'user_id'>, userId: number): number => {
+    const result = db.runSync('INSERT INTO workout_logs (user_id, routine_activity_id, date, weight, reps, completed) VALUES (?, ?, ?, ?, ?, ?);',
+        [userId, log.routine_activity_id, log.date, log.weight, log.reps, log.completed ? 1 : 0]);
     return result.lastInsertRowId;
 };
 
@@ -224,56 +235,56 @@ const getTodayDateString = () => {
     return new Date().toISOString().split('T')[0];
 };
 
-export const fetchTodayWater = (): number => {
+export const fetchTodayWater = (userId: number): number => {
     const today = getTodayDateString();
-    const result = db.getFirstSync<{ total: number }>('SELECT SUM(amount_ml) as total FROM water_logs WHERE date = ?;', [today]);
+    const result = db.getFirstSync<{ total: number }>('SELECT SUM(amount_ml) as total FROM water_logs WHERE date = ? AND user_id = ?;', [today, userId]);
     return result?.total || 0;
 };
 
-export const addWaterLog = (amount: number): void => {
+export const addWaterLog = (amount: number, userId: number): void => {
     const today = getTodayDateString();
-    db.runSync('INSERT INTO water_logs (date, amount_ml) VALUES (?, ?);', [today, amount]);
+    db.runSync('INSERT INTO water_logs (user_id, date, amount_ml) VALUES (?, ?, ?);', [userId, today, amount]);
 };
 
-export const fetchTodayCalories = (): number => {
+export const fetchTodayCalories = (userId: number): number => {
     const today = getTodayDateString();
-    const result = db.getFirstSync<{ total: number }>('SELECT SUM(calories) as total FROM food_logs WHERE date = ?;', [today]);
+    const result = db.getFirstSync<{ total: number }>('SELECT SUM(calories) as total FROM food_logs WHERE date = ? AND user_id = ?;', [today, userId]);
     return result?.total || 0;
 };
 
-export const addCalorieLog = (amount: number): void => {
+export const addCalorieLog = (amount: number, userId: number): void => {
     const today = getTodayDateString();
-    db.runSync('INSERT INTO food_logs (date, meal_type, food_name, calories, protein_g) VALUES (?, ?, ?, ?, ?);', [today, 'General', 'Logged Intake', amount, 0]);
+    db.runSync('INSERT INTO food_logs (user_id, date, meal_type, food_name, calories, protein_g) VALUES (?, ?, ?, ?, ?, ?);', [userId, today, 'General', 'Logged Intake', amount, 0]);
 };
 
-export const fetchTodayProtein = (): number => {
+export const fetchTodayProtein = (userId: number): number => {
     const today = getTodayDateString();
-    const result = db.getFirstSync<{ total: number }>('SELECT SUM(protein_g) as total FROM food_logs WHERE date = ?;', [today]);
+    const result = db.getFirstSync<{ total: number }>('SELECT SUM(protein_g) as total FROM food_logs WHERE date = ? AND user_id = ?;', [today, userId]);
     return result?.total || 0;
 };
 
-export const addProteinLog = (amount: number): void => {
+export const addProteinLog = (amount: number, userId: number): void => {
     const today = getTodayDateString();
-    db.runSync('INSERT INTO food_logs (date, meal_type, food_name, calories, protein_g) VALUES (?, ?, ?, ?, ?);', [today, 'General', 'Logged Intake', 0, amount]);
+    db.runSync('INSERT INTO food_logs (user_id, date, meal_type, food_name, calories, protein_g) VALUES (?, ?, ?, ?, ?, ?);', [userId, today, 'General', 'Logged Intake', 0, amount]);
 };
 
-export const fetchDailyGoals = (): { water_target: number | null, calorie_target: number | null, protein_target: number | null } => {
+export const fetchDailyGoals = (userId: number): { water_target: number | null, calorie_target: number | null, protein_target: number | null } => {
     const today = getTodayDateString();
-    const goals = db.getFirstSync<{ water_target: number | null, calorie_target: number | null, protein_target: number | null }>('SELECT water_target, calorie_target, protein_target FROM daily_goals WHERE date = ?;', [today]);
+    const goals = db.getFirstSync<{ water_target: number | null, calorie_target: number | null, protein_target: number | null }>('SELECT water_target, calorie_target, protein_target FROM daily_goals WHERE date = ? AND user_id = ?;', [today, userId]);
     return goals || { water_target: null, calorie_target: null, protein_target: null };
 };
 
-export const saveDailyGoals = (goals: { water_target?: number | null, calorie_target?: number | null, protein_target?: number | null }): void => {
+export const saveDailyGoals = (goals: { water_target?: number | null, calorie_target?: number | null, protein_target?: number | null }, userId: number): void => {
     const today = getTodayDateString();
     db.withTransactionSync(() => {
         db.runSync(
-            `INSERT INTO daily_goals (date, water_target, calorie_target, protein_target) 
-            VALUES (?, ?, ?, ?)
-            ON CONFLICT(date) DO UPDATE SET
+            `INSERT INTO daily_goals (date, user_id, water_target, calorie_target, protein_target) 
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(date, user_id) DO UPDATE SET
             water_target = COALESCE(excluded.water_target, water_target),
             calorie_target = COALESCE(excluded.calorie_target, calorie_target),
             protein_target = COALESCE(excluded.protein_target, protein_target);`,
-            [today, goals.water_target ?? null, goals.calorie_target ?? null, goals.protein_target ?? null]
+            [today, userId, goals.water_target ?? null, goals.calorie_target ?? null, goals.protein_target ?? null]
         );
     });
 };
@@ -316,5 +327,5 @@ export const clearAllData = (): void => {
         db.execSync('DELETE FROM food_logs;');
         db.execSync('DELETE FROM daily_goals;');
     });
-    console.log('--- ALL DATA CLEARED ---');
+    console.log('--- ALL NON-USER DATA CLEARED ---');
 }; 

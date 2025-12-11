@@ -12,6 +12,7 @@ import {
     Alert,
     Modal,
     TextInput,
+    Image,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "expo-router";
@@ -31,6 +32,8 @@ export default function AdminDashboardScreen() {
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [newUsername, setNewUsername] = useState('');
     const [newPassword, setNewPassword] = useState('');
+    const [selectedUser, setSelectedUser] = useState<User | null>(null);
+    const [isDetailsModalVisible, setIsDetailsModalVisible] = useState(false);
 
 
     // useFocusEffect will refetch users every time the screen comes into view
@@ -42,6 +45,11 @@ export default function AdminDashboardScreen() {
     );
 
     const handleAdd = () => setIsModalVisible(true);
+
+    const handleUserClick = (user: User) => {
+        setSelectedUser(user);
+        setIsDetailsModalVisible(true);
+    };
 
     const handleConfirmAddUser = () => {
         if (!newUsername.trim() || !newPassword.trim()) {
@@ -156,7 +164,11 @@ export default function AdminDashboardScreen() {
                     <Text style={[styles.headerCell, styles.actionsHeaderCell, { color: textColor }]}>Actions</Text>
                 </View>
                 {users.map((user) => (
-                    <View key={user.id} style={[styles.userRow, { backgroundColor: cardBackgroundColor, borderBottomColor: '#333'}]}>
+                    <TouchableOpacity 
+                        key={user.id} 
+                        style={[styles.userRow, { backgroundColor: cardBackgroundColor, borderBottomColor: '#333'}]}
+                        onPress={() => handleUserClick(user)}
+                    >
                         <View style={[styles.userInfo, { flex: 2.5 }]}>
                             <Text style={[styles.userName, { color: textColor }]}>{user.name}</Text>
                             <Text style={[styles.userEmail, { color: '#AAA'}]}>ID: {user.id}</Text>
@@ -166,7 +178,7 @@ export default function AdminDashboardScreen() {
                                 <FontAwesome5 name="trash" size={14} color="#FF3B30" />
                             </TouchableOpacity>
                         </View>
-                    </View>
+                    </TouchableOpacity>
                 ))}
             </ScrollView>
 
@@ -213,6 +225,77 @@ export default function AdminDashboardScreen() {
                                 <Text style={styles.modalButtonText}>Add User</Text>
                             </TouchableOpacity>
                         </View>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* User Details Modal */}
+            <Modal
+                animationType="fade"
+                transparent={true}
+                visible={isDetailsModalVisible}
+                onRequestClose={() => setIsDetailsModalVisible(false)}
+            >
+                <View style={styles.modalContainer}>
+                    <View style={[styles.modalContent, { backgroundColor: cardBackgroundColor, maxHeight: '80%' }]}>
+                        <View style={styles.modalHeaderRow}>
+                             <Text style={[styles.modalTitle, { color: textColor }]}>User Details</Text>
+                             <TouchableOpacity onPress={() => setIsDetailsModalVisible(false)}>
+                                 <FontAwesome5 name="times" size={24} color={textColor} />
+                             </TouchableOpacity>
+                        </View>
+                        
+                        {selectedUser && (
+                            <ScrollView style={{ width: '100%' }}>
+                                {selectedUser.profileImageUri ? (
+                                    <Image 
+                                        source={{ uri: selectedUser.profileImageUri }} 
+                                        style={styles.detailImage} 
+                                    />
+                                ) : (
+                                    <View style={[styles.detailImagePlaceholder, { backgroundColor: '#333' }]}>
+                                        <FontAwesome5 name="user" size={40} color="#888" />
+                                    </View>
+                                )}
+
+                                <View style={styles.detailRow}>
+                                    <Text style={[styles.detailLabel, { color: '#888' }]}>ID:</Text>
+                                    <Text style={[styles.detailValue, { color: textColor }]}>{selectedUser.id}</Text>
+                                </View>
+                                <View style={styles.detailRow}>
+                                    <Text style={[styles.detailLabel, { color: '#888' }]}>Name:</Text>
+                                    <Text style={[styles.detailValue, { color: textColor }]}>{selectedUser.name}</Text>
+                                </View>
+                                <View style={styles.detailRow}>
+                                    <Text style={[styles.detailLabel, { color: '#888' }]}>Email:</Text>
+                                    <Text style={[styles.detailValue, { color: textColor }]}>{selectedUser.email || 'N/A'}</Text>
+                                </View>
+                                <View style={styles.detailRow}>
+                                    <Text style={[styles.detailLabel, { color: '#888' }]}>Age:</Text>
+                                    <Text style={[styles.detailValue, { color: textColor }]}>{selectedUser.age}</Text>
+                                </View>
+                                <View style={styles.detailRow}>
+                                    <Text style={[styles.detailLabel, { color: '#888' }]}>Sex:</Text>
+                                    <Text style={[styles.detailValue, { color: textColor }]}>{selectedUser.sex}</Text>
+                                </View>
+                                <View style={styles.detailRow}>
+                                    <Text style={[styles.detailLabel, { color: '#888' }]}>Height:</Text>
+                                    <Text style={[styles.detailValue, { color: textColor }]}>{selectedUser.height}</Text>
+                                </View>
+                                <View style={styles.detailRow}>
+                                    <Text style={[styles.detailLabel, { color: '#888' }]}>Weight:</Text>
+                                    <Text style={[styles.detailValue, { color: textColor }]}>{selectedUser.weight}</Text>
+                                </View>
+                                <View style={styles.detailRow}>
+                                    <Text style={[styles.detailLabel, { color: '#888' }]}>Equipment:</Text>
+                                    <Text style={[styles.detailValue, { color: textColor }]}>{selectedUser.selectedEquipment}</Text>
+                                </View>
+                                <View style={styles.detailRow}>
+                                    <Text style={[styles.detailLabel, { color: '#888' }]}>Password:</Text>
+                                    <Text style={[styles.detailValue, { color: textColor }]}>{selectedUser.password || 'N/A'}</Text>
+                                </View>
+                            </ScrollView>
+                        )}
                     </View>
                 </View>
             </Modal>
@@ -334,5 +417,42 @@ const styles = StyleSheet.create({
         color: '#FFF',
         fontFamily: 'BebasNeue-Regular',
         fontSize: 18,
+    },
+    modalHeaderRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        width: '100%',
+        alignItems: 'center',
+        marginBottom: 20,
+    },
+    detailImage: {
+        width: 100,
+        height: 100,
+        borderRadius: 50,
+        alignSelf: 'center',
+        marginBottom: 20,
+    },
+    detailImagePlaceholder: {
+        width: 100,
+        height: 100,
+        borderRadius: 50,
+        alignSelf: 'center',
+        marginBottom: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    detailRow: {
+        flexDirection: 'row',
+        marginBottom: 10,
+        borderBottomWidth: 1,
+        borderBottomColor: '#333',
+        paddingBottom: 5,
+    },
+    detailLabel: {
+        fontWeight: 'bold',
+        width: 100,
+    },
+    detailValue: {
+        flex: 1,
     },
 });

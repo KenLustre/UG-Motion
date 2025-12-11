@@ -206,7 +206,7 @@ const InfoRow: React.FC<InfoRowProps> = ({ label, value, isEditing, onChangeText
         <View style={styles.infoRow}>
             <Text style={[styles.infoLabel, { color: textColor }]}>{label}</Text>
             {isEditing ? ( 
-                <TextInput style={[styles.infoInput, { color: textColor }]} value={value} onChangeText={onChangeText} keyboardType={keyboardType} placeholderTextColor={placeholderColor} />
+                <TextInput style={[styles.infoInput, { color: textColor }]} value={value === 'N/A' ? '' : value} onChangeText={onChangeText} keyboardType={keyboardType} placeholder="N/A" placeholderTextColor={placeholderColor} />
             ) : (
                 <Text style={[styles.infoValue, { color: textColor }]}>{value}</Text>
             )} 
