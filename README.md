@@ -119,4 +119,4 @@ To access the administrative panel, use the following credentials on the main lo
 - Expo SQLite
 
 ### EXPO APK Build Artifact Link. (ANDROID DOWNLOAD LINK)
- - https://expo.dev/accounts/kenlustre/projects/UGMotion/builds/0e34c862-e365-40e2-b577-462bb2065163
+ - https://expo.dev/accounts/kenlustre/projects/UGMotion/builds/80946267-8a30-46d1-920a-102cf4b81ca5
