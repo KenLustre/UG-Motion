@@ -1,4 +1,5 @@
 import * as SQLite from 'expo-sqlite';
+
 export interface User {
     id: number;
     name: string;
@@ -33,6 +34,7 @@ export interface WorkoutLog {
     reps: number;
     completed: boolean;
 }
+
 const db = SQLite.openDatabaseSync('ugmotion.db');
 
 export const initDatabase = () => {
@@ -40,73 +42,97 @@ export const initDatabase = () => {
         db.execSync('PRAGMA foreign_keys = ON;');
         db.execSync(
             `CREATE TABLE IF NOT EXISTS users (
-                    id INTEGER PRIMARY KEY NOT NULL,
-                    name TEXT NOT NULL,
-                    email TEXT,
-                    age TEXT,
-                    sex TEXT,
-                    height TEXT,
-                    weight TEXT,
-                    password TEXT,
-                    profileImageUri TEXT, 
-                    selectedEquipment TEXT
-                );`
+                id INTEGER PRIMARY KEY NOT NULL,
+                name TEXT NOT NULL UNIQUE COLLATE NOCASE,
+                email TEXT,
+                age TEXT,
+                sex TEXT,
+                height TEXT,
+                weight TEXT,
+                password TEXT,
+                profileImageUri TEXT, 
+                selectedEquipment TEXT
+            );`
         );
         db.execSync(
             `CREATE TABLE IF NOT EXISTS plan_days (
-                    id INTEGER PRIMARY KEY NOT NULL,
-                    user_id INTEGER NOT NULL,
-                    day_name TEXT NOT NULL,
-                    focus TEXT,
-                    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
-                );`
+                id INTEGER PRIMARY KEY NOT NULL,
+                user_id INTEGER NOT NULL,
+                day_name TEXT NOT NULL,
+                focus TEXT,
+                FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+            );`
         );
         db.execSync(
             `CREATE TABLE IF NOT EXISTS routine_activities (
-                    id INTEGER PRIMARY KEY NOT NULL,
-                    plan_day_id INTEGER NOT NULL,
-                    name TEXT NOT NULL,
-                    sets INTEGER NOT NULL,
-                    reps INTEGER NOT NULL,
-                    FOREIGN KEY (plan_day_id) REFERENCES plan_days (id) ON DELETE CASCADE
-                );`
+                id INTEGER PRIMARY KEY NOT NULL,
+                plan_day_id INTEGER NOT NULL,
+                name TEXT NOT NULL,
+                sets INTEGER NOT NULL,
+                reps INTEGER NOT NULL,
+                FOREIGN KEY (plan_day_id) REFERENCES plan_days (id) ON DELETE CASCADE
+            );`
         );
         db.execSync(
             `CREATE TABLE IF NOT EXISTS workout_logs (
-                    id INTEGER PRIMARY KEY NOT NULL,
-                    user_id INTEGER NOT NULL,
-                    routine_activity_id INTEGER,
-                    date TEXT NOT NULL,
-                    weight REAL,
-                    reps INTEGER,
-                    completed INTEGER DEFAULT 0,
-                    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
-                    FOREIGN KEY (routine_activity_id) REFERENCES routine_activities (id) ON DELETE SET NULL
-                );`
+                id INTEGER PRIMARY KEY NOT NULL,
+                user_id INTEGER NOT NULL,
+                routine_activity_id INTEGER,
+                date TEXT NOT NULL,
+                weight REAL,
+                reps INTEGER,
+                completed INTEGER DEFAULT 0,
+                FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+                FOREIGN KEY (routine_activity_id) REFERENCES routine_activities (id) ON DELETE SET NULL
+            );`
         );
         db.execSync(
             `CREATE TABLE IF NOT EXISTS water_logs (
-                    id INTEGER PRIMARY KEY NOT NULL,
-                    user_id INTEGER NOT NULL,
-                    date TEXT NOT NULL,
-                    amount_ml INTEGER NOT NULL,
-                    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
-                );`
+                id INTEGER PRIMARY KEY NOT NULL,
+                user_id INTEGER NOT NULL,
+                date TEXT NOT NULL,
+                amount_ml INTEGER NOT NULL,
+                FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+            );`
         );
         db.execSync(
             `CREATE TABLE IF NOT EXISTS food_logs (
-                    id INTEGER PRIMARY KEY NOT NULL,
-                    user_id INTEGER NOT NULL,
-                    date TEXT NOT NULL,
-                    meal_type TEXT NOT NULL,
-                    food_name TEXT NOT NULL,
-                    calories INTEGER NOT NULL,
-                    protein_g REAL,
-                    carbs_g REAL,
-                    fat_g REAL,
-                    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
-                );`
+                id INTEGER PRIMARY KEY NOT NULL,
+                user_id INTEGER NOT NULL,
+                date TEXT NOT NULL,
+                meal_type TEXT NOT NULL,
+                food_name TEXT NOT NULL,
+                calories INTEGER NOT NULL,
+                protein_g REAL,
+                carbs_g REAL,
+                fat_g REAL,
+                FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+            );`
         );
+
+        const tablesToMigrate = ['plan_days', 'workout_logs', 'water_logs', 'food_logs'];
+        
+        tablesToMigrate.forEach(tableName => {
+            const tableExists = db.getFirstSync(`SELECT name FROM sqlite_master WHERE type='table' AND name='${tableName}';`);
+            if (tableExists) {
+                const columns = db.getAllSync<any>(`PRAGMA table_info(${tableName});`);
+                const hasUserId = columns.some(column => column.name === 'user_id');
+                if (!hasUserId) {
+                    db.execSync(`ALTER TABLE ${tableName} ADD COLUMN user_id INTEGER;`);
+                }
+            }
+        });
+
+        const dailyGoalsExists = db.getFirstSync("SELECT name FROM sqlite_master WHERE type='table' AND name='daily_goals';");
+        if (dailyGoalsExists) {
+            const tableInfo = db.getAllSync<any>('PRAGMA table_info(daily_goals);');
+            const pkColumns = tableInfo.filter(c => c.pk > 0);
+            
+            if (pkColumns.length !== 2) {
+                db.execSync('DROP TABLE daily_goals;');
+            }
+        }
+
         db.execSync(
             `CREATE TABLE IF NOT EXISTS daily_goals (
                     date TEXT NOT NULL,
@@ -118,19 +144,10 @@ export const initDatabase = () => {
                     FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
                 );`
         );
-        const tablesToMigrate = ['plan_days', 'workout_logs', 'water_logs', 'food_logs', 'daily_goals'];
-        tablesToMigrate.forEach(tableName => {
-            const columns = db.getAllSync<any>(`PRAGMA table_info(${tableName});`);
-            const hasUserId = columns.some(column => column.name === 'user_id');
-            if (!hasUserId) {
-                console.log(`Applying migration: Adding 'user_id' to '${tableName}' table.`);
-                db.execSync(`ALTER TABLE ${tableName} ADD COLUMN user_id INTEGER;`);
-            }
-        });
 
-        const columns = db.getAllSync<any>('PRAGMA table_info(daily_goals);');
-        const hasProteinTarget = columns.some(column => column.name === 'protein_target');
-        if (!hasProteinTarget) {
+        const dgColumns = db.getAllSync<any>('PRAGMA table_info(daily_goals);');
+        const hasProtein = dgColumns.some(c => c.name === 'protein_target');
+        if (!hasProtein) {
             db.execSync('ALTER TABLE daily_goals ADD COLUMN protein_target INTEGER;');
         }
 
@@ -158,8 +175,8 @@ export const fetchAllUsers = (): User[] => {
     return db.getAllSync<User>('SELECT * FROM users;');
 };
 
-export const fetchUserForLogin = (name: string): User | null => {
-    return db.getFirstSync<User>('SELECT * FROM users WHERE name = ? COLLATE NOCASE LIMIT 1;', [name]);
+export const fetchUsersByNameForLogin = (name: string): User[] => {
+    return db.getAllSync<User>('SELECT * FROM users WHERE name = ? COLLATE NOCASE;', [name]);
 };
 
 export const fetchUserById = (userId: number): User | null => {
@@ -171,25 +188,39 @@ export const updateUserPassword = (userId: number, newPass: string): void => {
 };
 
 export const deleteUserById = (userId: number): void => {
-    db.runSync('DELETE FROM users WHERE id = ?;', [userId]);
+    db.withTransactionSync(() => {
+        db.runSync('DELETE FROM food_logs WHERE user_id = ?;', [userId]);
+        db.runSync('DELETE FROM water_logs WHERE user_id = ?;', [userId]);
+        db.runSync('DELETE FROM daily_goals WHERE user_id = ?;', [userId]);
+        db.runSync('DELETE FROM workout_logs WHERE user_id = ?;', [userId]);
+        db.runSync('DELETE FROM plan_days WHERE user_id = ?;', [userId]);
+        db.runSync('DELETE FROM users WHERE id = ?;', [userId]);
+    });
 };
 
 export const addUser = (name: string, password: string): User | null => {
-    const result = db.runSync(
-        `INSERT INTO users (name, password, email, age, sex, height, weight, profileImageUri, selectedEquipment) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);`,
-        [name, password, null, 'N/A', 'N/A', 'N/A', 'N/A', null, '[]']
-    );
-    const newUserId = result.lastInsertRowId;
-    if (newUserId) {
-        return db.getFirstSync<User>('SELECT * FROM users WHERE id = ?;', [newUserId]);
+    try {
+        const result = db.runSync(
+            `INSERT INTO users (name, password, email, age, sex, height, weight, profileImageUri, selectedEquipment) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+            [name, password, null, 'N/A', 'N/A', 'N/A', 'N/A', null, '[]']
+        );
+        const newUserId = result.lastInsertRowId;
+        if (newUserId) {
+            return db.getFirstSync<User>('SELECT * FROM users WHERE id = ?;', [newUserId]);
+        }
+        return null;
+    } catch (error: any) {
+        if (error.message.includes('UNIQUE constraint failed')) {
+            console.log(`Attempted to create a user with an existing name: ${name}`);
+            return null;
+        }
+        throw error;
     }
-    return null;
 };
 
 export const saveWeeklyPlan = (plan: DayPlan[], userId: number): void => {
     db.withTransactionSync(() => {
         const userPlanDays = db.getAllSync<{ id: number }>('SELECT id FROM plan_days WHERE user_id = ?;', [userId]);
-        // Deleting from plan_days will automatically cascade to delete related routine_activities.
         if (userPlanDays.length > 0) { 
             db.runSync('DELETE FROM plan_days WHERE user_id = ?;', [userId]);
         }
@@ -226,6 +257,7 @@ export const fetchLogsForDay = (plan_day_id: number, date: string, userId: numbe
 };
 
 export const saveWorkoutLog = (log: Omit<WorkoutLog, 'id' | 'user_id'>, userId: number): number => {
+    if (!userId) return 0;
     const result = db.runSync('INSERT INTO workout_logs (user_id, routine_activity_id, date, weight, reps, completed) VALUES (?, ?, ?, ?, ?, ?);',
         [userId, log.routine_activity_id, log.date, log.weight, log.reps, log.completed ? 1 : 0]);
     return result.lastInsertRowId;
@@ -242,6 +274,7 @@ export const fetchTodayWater = (userId: number): number => {
 };
 
 export const addWaterLog = (amount: number, userId: number): void => {
+    if (!userId) return;
     const today = getTodayDateString();
     db.runSync('INSERT INTO water_logs (user_id, date, amount_ml) VALUES (?, ?, ?);', [userId, today, amount]);
 };
@@ -253,6 +286,7 @@ export const fetchTodayCalories = (userId: number): number => {
 };
 
 export const addCalorieLog = (amount: number, userId: number): void => {
+    if (!userId) return;
     const today = getTodayDateString();
     db.runSync('INSERT INTO food_logs (user_id, date, meal_type, food_name, calories, protein_g) VALUES (?, ?, ?, ?, ?, ?);', [userId, today, 'General', 'Logged Intake', amount, 0]);
 };
@@ -264,6 +298,7 @@ export const fetchTodayProtein = (userId: number): number => {
 };
 
 export const addProteinLog = (amount: number, userId: number): void => {
+    if (!userId) return;
     const today = getTodayDateString();
     db.runSync('INSERT INTO food_logs (user_id, date, meal_type, food_name, calories, protein_g) VALUES (?, ?, ?, ?, ?, ?);', [userId, today, 'General', 'Logged Intake', 0, amount]);
 };
@@ -275,6 +310,7 @@ export const fetchDailyGoals = (userId: number): { water_target: number | null, 
 };
 
 export const saveDailyGoals = (goals: { water_target?: number | null, calorie_target?: number | null, protein_target?: number | null }, userId: number): void => {
+    if (!userId) return;
     const today = getTodayDateString();
     db.withTransactionSync(() => {
         db.runSync(
@@ -292,30 +328,45 @@ export const saveDailyGoals = (goals: { water_target?: number | null, calorie_ta
 export const debugLogSchema = (): void => {
     console.log('--- ADMIN DATABASE INSPECTION ---');
     const tables = db.getAllSync<{ name: string }>("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';");
+    
     tables.forEach(table => {
-        console.log(`\n=== TABLE: ${table.name.toUpperCase()} ===`);
-        const columns = db.getAllSync(`PRAGMA table_info(${table.name});`);
-        console.log('  [Schema]:', columns.map((c: any) => `${c.name} (${c.type})`).join(', '));
-        
-        const foreignKeys = db.getAllSync(`PRAGMA foreign_key_list(${table.name});`);
-        foreignKeys.forEach((fk: any) => {
-            console.log(`  [Relation]: ${fk.from} -> ${fk.table}(${fk.to}) [ON DELETE ${fk.on_delete}]`);
-        });
+        console.log(`\n\n****************************************`);
+        console.log(`***   TABLE: ${table.name.toUpperCase()}`);
+        console.log(`****************************************`);
 
-        const rows = db.getAllSync<any>(`SELECT * FROM ${table.name};`);
-        if (rows.length > 0) {
-            console.log(`  [Data] (${rows.length} records):`);
-            rows.forEach((row) => {
-                const formattedRow = Object.entries(row)
-                    .map(([key, value]) => `${key}: ${value === null ? 'NULL' : value}`)
-                    .join(' | ');
-                console.log(`    -> ${formattedRow}`);
+        try {
+            // Log Schema
+            console.log('\n--- SCHEMA ---');
+            const columns = db.getAllSync<any>(`PRAGMA table_info(${table.name});`);
+            columns.forEach(c => {
+                console.log(`- ${c.name}: ${c.type} ${c.notnull ? 'NOT NULL' : ''} ${c.pk ? '(PK)' : ''}`);
             });
-        } else {
-            console.log('  [Data]: (Empty)');
+
+            // Log Foreign Keys
+            const foreignKeys = db.getAllSync<any>(`PRAGMA foreign_key_list(${table.name});`);
+            if (foreignKeys.length > 0) {
+                console.log('\n--- FOREIGN KEYS ---');
+                foreignKeys.forEach(fk => {
+                    console.log(`- Column '${fk.from}' -> ${fk.table}(${fk.to}) | ON DELETE: ${fk.on_delete}`);
+                });
+            }
+
+            // Log Data
+            const rows = db.getAllSync<any>(`SELECT * FROM ${table.name};`);
+            console.log(`\n--- DATA (${rows.length} records) ---`);
+            if (rows.length > 0) {
+                rows.forEach((row, index) => {
+                    console.log(`\n[ RECORD ${index + 1} ]`);
+                    console.log(JSON.stringify(row, null, 2)); 
+                });
+            } else {
+                console.log('(No records)');
+            }
+        } catch (error) {
+            console.error(`Failed to inspect table ${table.name}:`, error);
         }
     });
-    console.log('\n---------------------------------');
+    console.log('\n--- END OF DATABASE INSPECTION ---');
 };
 
 export const clearAllData = (): void => {
@@ -328,4 +379,4 @@ export const clearAllData = (): void => {
         db.execSync('DELETE FROM daily_goals;');
     });
     console.log('--- ALL NON-USER DATA CLEARED ---');
-}; 
+};

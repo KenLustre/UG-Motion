@@ -61,6 +61,7 @@ export const useProfile = () => {
 const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [profileImageUri, setProfileImageUri] = useState<string | null>(null);
+  const [userId, setUserId] = useState<number | null>(null);
   const [userData, setUserDataState] = useState<UserData>({
     name: 'N/A',
     email: null,
@@ -93,6 +94,7 @@ const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
             const userIdStr = await AsyncStorage.getItem('loggedInUserId');
             if (userIdStr) {
                 const userId = parseInt(userIdStr, 10);
+                setUserId(userId);
                 const user = fetchUserById(userId);
                 if (user) {
                     setUserDataState(user);
@@ -100,19 +102,19 @@ const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
                         setProfileImageUri(user.profileImageUri);
                     }
                 }
+
+                const water = await fetchTodayWater(userId);
+                const calories = await fetchTodayCalories(userId);
+                const protein = await fetchTodayProtein(userId);
+                const goals = await fetchDailyGoals(userId);
+
+                const plan = fetchWeeklyPlan(userId);
+                setWeeklyPlan(plan);
+
+                setWaterData(prev => ({ ...prev, current: water, target: goals.water_target || prev.target }));
+                setCalorieData(prev => ({ ...prev, current: calories, target: goals.calorie_target || prev.target }));
+                setProteinData(prev => ({ ...prev, current: protein, target: goals.protein_target || prev.target }));
             }
-
-            const plan = fetchWeeklyPlan();
-            setWeeklyPlan(plan);
-
-            const water = await fetchTodayWater();
-            const calories = await fetchTodayCalories();
-            const protein = await fetchTodayProtein();
-            const goals = await fetchDailyGoals();
-
-            setWaterData(prev => ({ ...prev, current: water, target: goals.water_target || prev.target }));
-            setCalorieData(prev => ({ ...prev, current: calories, target: goals.calorie_target || prev.target }));
-            setProteinData(prev => ({ ...prev, current: protein, target: goals.protein_target || prev.target }));
         } catch (error) {
             console.error("Failed to load data from database", error);
         } finally {
@@ -133,8 +135,9 @@ const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     saveUserProfile(updatedUser as User);
   };
   const updateWeeklyPlan = (newPlan: DBDayPlan[]) => {
+    if (!userId) return;
     setWeeklyPlan(newPlan);
-    saveWeeklyPlan(newPlan);
+    saveWeeklyPlan(newPlan, userId);
   };
   const setSelectedEquipment = (equipment: EquipmentType[]) => {
     const equipmentJson = JSON.stringify(equipment);
@@ -147,8 +150,9 @@ const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   }
   const selectedEquipment: EquipmentType[] = userData.selectedEquipment ? JSON.parse(userData.selectedEquipment) : [];
   const addWater = async (amount: number) => {
+    if (!userId) return;
     try {
-      await addWaterLog(amount);
+      await addWaterLog(amount, userId);
       setWaterData(prev => ({
         ...prev,
         current: prev.current + amount,
@@ -158,16 +162,18 @@ const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     }
   };
   const updateWaterTarget = async (newTarget: number | null) => {
+    if (!userId) return;
     try {
-      await saveDailyGoals({ water_target: newTarget });
+      await saveDailyGoals({ water_target: newTarget }, userId);
       setWaterData(prev => ({ ...prev, target: newTarget }));
     } catch (error) {
       console.error("Failed to save water target:", error);
     }
   };
   const addCalories = async (amount: number) => {
+    if (!userId) return;
     try {
-      await addCalorieLog(amount);
+      await addCalorieLog(amount, userId);
       setCalorieData(prev => ({
         ...prev,
         current: prev.current + amount,
@@ -177,16 +183,18 @@ const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     }
   };
   const updateCalorieTarget = async (newTarget: number | null) => {
+    if (!userId) return;
     try {
-      await saveDailyGoals({ calorie_target: newTarget });
+      await saveDailyGoals({ calorie_target: newTarget }, userId);
       setCalorieData(prev => ({ ...prev, target: newTarget }));
     } catch (error) {
       console.error("Failed to save calorie target:", error);
     }
   };
   const addProtein = async (amount: number) => {
+    if (!userId) return;
     try {
-      await addProteinLog(amount);
+      await addProteinLog(amount, userId);
       setProteinData(prev => ({
         ...prev,
         current: prev.current + amount,
@@ -196,8 +204,9 @@ const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     }
   };
   const updateProteinTarget = async (newTarget: number | null) => {
+    if (!userId) return;
     try {
-      await saveDailyGoals({ protein_target: newTarget });
+      await saveDailyGoals({ protein_target: newTarget }, userId);
       setProteinData(prev => ({ ...prev, target: newTarget }));
     } catch (error) {
       console.error("Failed to save protein target:", error);

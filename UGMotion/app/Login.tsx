@@ -13,7 +13,7 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { fetchUserForLogin } from "./database";
+import { fetchUsersByNameForLogin } from "./database";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
@@ -34,17 +34,19 @@ export default function LoginScreen() {
       return;
     }
     try {
-      const user = await fetchUserForLogin(username);
-      if (!user) {
+      const users = await fetchUsersByNameForLogin(username);
+      if (!users || users.length === 0) {
         Alert.alert("Login Failed", "User not found.");
         return;
       }
-      if (user.password === password) {
-        // In a real app, this should check a role, not a hardcoded name
-        const isAdmin = user.name.toLowerCase() === 'admin';
+
+      const matchedUser = users.find(user => user.password === password);
+
+      if (matchedUser) {
+        const isAdmin = matchedUser.name.toLowerCase() === 'admin';
         const redirectPath = isAdmin ? "/AdminDashboard" : "/(tabs)/Dashboard";
         
-        await AsyncStorage.setItem('loggedInUserId', user.id.toString());
+        await AsyncStorage.setItem('loggedInUserId', matchedUser.id.toString());
         router.replace(redirectPath);
       } else {
         Alert.alert("Login Failed", "Incorrect password.");

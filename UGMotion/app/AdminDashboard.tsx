@@ -28,7 +28,6 @@ export default function AdminDashboardScreen() {
     const router = useRouter();
     const [users, setUsers] = useState<User[]>([]);
     const [lastDeletedUser, setLastDeletedUser] = useState<User | null>(null);
-    // State for the "Add User" modal
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [newUsername, setNewUsername] = useState('');
     const [newPassword, setNewPassword] = useState('');
@@ -36,7 +35,6 @@ export default function AdminDashboardScreen() {
     const [isDetailsModalVisible, setIsDetailsModalVisible] = useState(false);
 
 
-    // useFocusEffect will refetch users every time the screen comes into view
     useFocusEffect(
         React.useCallback(() => {
             const allUsers = fetchAllUsers();
@@ -62,7 +60,7 @@ export default function AdminDashboardScreen() {
             setUsers(currentUsers => [...currentUsers, newUser]);
             Alert.alert("Success", `User "${newUser.name}" has been created.`);
         } else {
-            Alert.alert("Error", "Failed to create the user.");
+            Alert.alert("Error", "Failed to create the user. Username might already exist.");
         }
         setNewUsername('');
         setNewPassword('');
@@ -89,9 +87,9 @@ export default function AdminDashboardScreen() {
                 { 
                     text: "Delete", 
                     onPress: () => {
-                        setLastDeletedUser(userToDelete); // Save the user for a potential undo
-                        deleteUserById(userId); // Actually delete from the database
-                        setUsers(currentUsers => currentUsers.filter(user => user.id !== userId)); // Update UI state
+                        setLastDeletedUser(userToDelete);
+                        deleteUserById(userId);
+                        setUsers(currentUsers => currentUsers.filter(user => user.id !== userId));
                         Alert.alert("User Deleted", `User "${userToDelete.name}" has been deleted.`);
                     },
                     style: 'destructive'
@@ -102,12 +100,10 @@ export default function AdminDashboardScreen() {
 
     const handleUndo = () => {
         if (lastDeletedUser) {
-            // Re-add the user to the database. We use the addUser function.
             const restoredUser = addUser(lastDeletedUser.name, lastDeletedUser.password ?? '');
             if (restoredUser) {
-                // To avoid ID conflicts, we fetch all users again to get the new ID.
                 setUsers(fetchAllUsers());
-                setLastDeletedUser(null); // Clear the undo state
+                setLastDeletedUser(null);
                 Alert.alert("Undo Successful", `Restored user: ${lastDeletedUser.name}.`);
             } else {
                 Alert.alert("Undo Failed", "Could not restore the user.");
@@ -137,7 +133,6 @@ export default function AdminDashboardScreen() {
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor }]}>
-            {/* Custom Header */}
             <View style={[styles.headerContainer, { backgroundColor: headerColor }]}>
                 <Text style={[styles.headerTitle, { color: textColor }]}>Admin Dashboard</Text>
                 <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
@@ -145,7 +140,6 @@ export default function AdminDashboardScreen() {
                 </TouchableOpacity>
             </View>
 
-            {/* Main Action Buttons */}
             <View style={styles.mainActions}>
                 <TouchableOpacity style={[styles.actionButton, styles.addButton]} onPress={handleAdd}>
                     <FontAwesome5 name="plus" size={16} color="#FFF" />
@@ -157,7 +151,6 @@ export default function AdminDashboardScreen() {
                 </TouchableOpacity>
             </View>
 
-            {/* User Table/List */}
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 <View style={[styles.tableHeader, { borderBottomColor: '#333'}]}>
                     <Text style={[styles.headerCell, { flex: 1.5, color: textColor }]}>Name</Text>
@@ -182,7 +175,6 @@ export default function AdminDashboardScreen() {
                 ))}
             </ScrollView>
 
-            {/* Add User Modal */}
             <Modal
                 animationType="slide"
                 transparent={true}
@@ -229,7 +221,6 @@ export default function AdminDashboardScreen() {
                 </View>
             </Modal>
 
-            {/* User Details Modal */}
             <Modal
                 animationType="fade"
                 transparent={true}
@@ -342,8 +333,8 @@ const styles = StyleSheet.create({
         marginLeft: 8,
         fontSize: 16,
     },
-    addButton: { backgroundColor: '#34C759' }, // Green
-    undoButton: { backgroundColor: '#FF9500' }, // Orange
+    addButton: { backgroundColor: '#34C759' },
+    undoButton: { backgroundColor: '#FF9500' },
     scrollContent: {
         paddingHorizontal: 10,
         paddingBottom: 50,
@@ -374,7 +365,6 @@ const styles = StyleSheet.create({
     userActions: { flex: 1, flexDirection: 'row', marginLeft: 80 },
     editButton: { padding: 8 },
     deleteButton: { padding: 8 },
-    // Modal Styles
     modalContainer: {
         flex: 1,
         justifyContent: 'center',
