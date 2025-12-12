@@ -183,6 +183,20 @@ export const fetchUserById = (userId: number): User | null => {
     return db.getFirstSync<User>('SELECT * FROM users WHERE id = ?;', [userId]);
 };
 
+export const checkUsernameExists = (name: string, currentUserId?: number): boolean => {
+    let query = 'SELECT id FROM users WHERE name = ? COLLATE NOCASE;';
+    const params: any[] = [name];
+
+    if (currentUserId) {
+        query = 'SELECT id FROM users WHERE name = ? COLLATE NOCASE AND id != ?;';
+        params.push(currentUserId);
+    }
+
+    const existingUser = db.getFirstSync<{ id: number }>(query, params);
+    return !!existingUser;
+};
+
+
 export const updateUserPassword = (userId: number, newPass: string): void => {
     db.runSync('UPDATE users SET password = ? WHERE id = ?;', [newPass, userId]);
 };

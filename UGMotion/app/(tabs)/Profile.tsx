@@ -5,6 +5,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from "expo-router";
 import { useProfile } from "./_layout";
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { fetchUsersByNameForLogin } from "../database";
 const Profile = () => {
     const textColor = '#FFFFFF';
     const boxBackgroundColor = '#1C1C1E';
@@ -31,7 +32,20 @@ const Profile = () => {
             setProfileImageUri(result.assets[0].uri);
         }
     };
-    const handleSave = () => {
+    const handleSave = async () => {
+        if (tempData.name !== userData.name) {
+            try {
+                const existingUsers = await fetchUsersByNameForLogin(tempData.name);
+                if (existingUsers && existingUsers.length > 0) {
+                    Alert.alert("Error", "Username already exists. Please choose a different name.");
+                    return;
+                }
+            } catch (error) {
+                console.error("Error checking username:", error);
+                Alert.alert("Error", "Failed to verify username availability.");
+                return;
+            }
+        }
         const hasChanged = tempData.height !== userData.height || 
                     tempData.weight !== userData.weight ||
                     tempData.name !== userData.name ||

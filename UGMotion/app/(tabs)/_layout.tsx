@@ -3,7 +3,7 @@ import React, { createContext, useState, useContext, ReactNode, useEffect } from
 import { View, Platform, Image, Pressable } from 'react-native';
 import '../../global.css';
 import { CustomTabBar } from '@/components/CustomTabBar';
-import { initDatabase, fetchUserById, saveUserProfile, User, saveWeeklyPlan, fetchWeeklyPlan, DayPlan as DBDayPlan, RoutineActivity, fetchTodayWater, addWaterLog, fetchTodayProtein, addProteinLog, fetchDailyGoals, saveDailyGoals, fetchTodayCalories, addCalorieLog } from '../database';
+import { initDatabase, fetchUserById, saveUserProfile, User, saveWeeklyPlan, fetchWeeklyPlan, DayPlan as DBDayPlan, RoutineActivity, fetchTodayWater, addWaterLog, fetchTodayProtein, addProteinLog, fetchDailyGoals, saveDailyGoals, fetchTodayCalories, addCalorieLog, fetchUsersByNameForLogin } from '../database';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 type EquipmentType = 'dumbbells' | 'bodyweight' | 'cardio' | 'machines';
 interface UserData {
